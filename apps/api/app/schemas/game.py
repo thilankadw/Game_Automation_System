@@ -7,7 +7,7 @@ class GameBase(BaseModel):
     """Fields shared by game schemas."""
 
     name: str = Field(min_length=1, max_length=255)
-    number_of_spins: int = Field(ge=0)
+    number_of_spins: int = Field(default=1000, ge=0)
     url: str = Field(min_length=1, max_length=2048)
     game_provider_id: int = Field(gt=0)
 

@@ -14,7 +14,9 @@ class Game(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
-    number_of_spins: Mapped[int]
+    number_of_spins: Mapped[int] = mapped_column(
+        default=1000, server_default="1000"
+    )
     url: Mapped[str] = mapped_column(String(2048))
     game_provider_id: Mapped[int] = mapped_column(
         ForeignKey("game_providers.id")
