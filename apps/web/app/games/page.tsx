@@ -24,6 +24,9 @@ interface GamesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+/**
+ * Normalize a Next.js search param that may arrive as a repeated value.
+ */
 function readParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -31,6 +34,9 @@ function readParam(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+/**
+ * Build a pagination URL while preserving the active search query.
+ */
 function pageHref(page: number, query: string): string {
   const params = new URLSearchParams();
   if (query) {

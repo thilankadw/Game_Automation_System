@@ -44,6 +44,12 @@ interface OverviewData {
   health: HealthStatus | null;
 }
 
+/**
+ * Load the overview without letting one failed endpoint blank the whole page.
+ *
+ * Games, providers, and health settle independently. ROI counts are fetched
+ * per provider and represented as `null` when an individual call fails.
+ */
 async function loadOverview(): Promise<OverviewData> {
   const [gamesResult, providersResult, healthResult] = await Promise.allSettled([
     getAllGames(),
@@ -99,6 +105,10 @@ async function loadOverview(): Promise<OverviewData> {
   return { games, providers, providerMetrics, roiSetTotal, health };
 }
 
+/**
+ * Resolve a provider name, falling back to the raw identifier when the
+ * provider list could not be loaded.
+ */
 function providerNameFor(game: Game, providers: GameProvider[] | null): string {
   return (
     providers?.find((provider) => provider.id === game.game_provider_id)?.name ??

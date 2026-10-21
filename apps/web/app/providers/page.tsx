@@ -29,6 +29,9 @@ interface ProviderCard {
   roiSets: number | null;
 }
 
+/**
+ * Normalize a Next.js search param that may arrive as a repeated value.
+ */
 function readParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -55,6 +58,8 @@ export default async function ProvidersPage({
   const games: Game[] | null =
     gamesResult.status === "fulfilled" ? gamesResult.value : null;
 
+  // ROI sets are provider-scoped, so each provider needs its own request.
+  // Settled results keep a single failure from hiding the whole directory.
   const roiSetResults = providersPage
     ? await Promise.allSettled(
         providersPage.items.map((provider) => getRoiSets(provider.id)),

@@ -151,6 +151,11 @@ export function getHealth(): Promise<HealthStatus> {
   return request<HealthStatus>("/health");
 }
 
+/**
+ * Walk paginated API results until the reported total is reached or the
+ * page cap is hit. The cap prevents runaway requests on unexpectedly large
+ * catalogs during server rendering.
+ */
 async function getAllPages<T>(
   fetchPage: (skip: number) => Promise<Page<T>>,
   maxPages = 10,

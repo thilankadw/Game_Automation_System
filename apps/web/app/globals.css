@@ -1,3 +1,13 @@
+/*
+ * Dark theme palette for the automation control plane.
+ *
+ * Backgrounds: --bg-deep through --surface-hover form an obsidian stack,
+ * with each step adding contrast and elevation.
+ * Text: --text for primary content, --text-secondary for supporting copy,
+ * and --text-muted for labels, metadata, and inactive controls.
+ * Accents: cyan (--accent) is the primary action color; blue, violet,
+ * success, warning, and danger carry state and category meaning.
+ */
 :root {
   color-scheme: dark;
 
