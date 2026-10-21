@@ -3,6 +3,7 @@
 from app.schemas.game_provider import (
     GameProviderBase,
     GameProviderCreate,
+    GameProviderPage,
     GameProviderRead,
     GameProviderUpdate,
 )
@@ -10,6 +11,7 @@ from app.schemas.game_provider import (
 __all__ = [
     "GameProviderBase",
     "GameProviderCreate",
+    "GameProviderPage",
     "GameProviderRead",
     "GameProviderUpdate",
 ]
