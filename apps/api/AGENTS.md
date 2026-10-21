@@ -144,15 +144,16 @@ git commit -m "feat: add task creation endpoint" -m "Add POST /tasks so the fron
 
 ## Branching and pull requests
 
-- Branch from `main` using `{type}/{short-description}`, for example
+- `dev` is the base branch for all work; do not branch from or target `main`.
+- Branch from `dev` using `{type}/{short-description}`, for example
   `feat/tasks-api` or `fix/session-rollback`.
 - Keep pull requests small and focused on one concern. Self-review the diff before
   requesting review.
-- Rebase or merge `main` into your branch to resolve conflicts; do not force-push
-  `main` or other shared branches.
+- Rebase or merge `dev` into your branch to resolve conflicts; do not force-push
+  `dev` or other shared branches.
 - Ensure linting and tests pass before marking a PR ready for review.
 - Use the PR title format `{type}: {summary}`, matching the commit convention.
-- Use squash merge so the PR title and body become the commit on `main`.
+- Use squash merge so the PR title and body become the commit on `dev`.
 
 Use this PR structure in the same order for every PR:
 
