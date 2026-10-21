@@ -1,3 +1,5 @@
+"""Task ORM model."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, String, func
@@ -7,6 +9,8 @@ from app.db import Base
 
 
 class Task(Base):
+    """An automation task tracked by the system."""
+
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
