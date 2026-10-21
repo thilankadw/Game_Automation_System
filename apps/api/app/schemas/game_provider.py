@@ -25,3 +25,12 @@ class GameProviderRead(GameProviderBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+
+
+class GameProviderPage(BaseModel):
+    """A page of game providers."""
+
+    items: list[GameProviderRead]
+    total: int
+    skip: int
+    limit: int
