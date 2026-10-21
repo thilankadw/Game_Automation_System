@@ -40,9 +40,11 @@ def client() -> Iterator[TestClient]:
 
 @pytest.fixture(autouse=True)
 def clear_tables(client: TestClient) -> Iterator[None]:
-    """Remove games and providers after each test so cases stay independent."""
+    """Remove ROI, game, and provider rows after each test."""
     yield
     with closing(sqlite3.connect(_DB_PATH)) as connection:
+        connection.execute("DELETE FROM rois")
+        connection.execute("DELETE FROM roi_sets")
         connection.execute("DELETE FROM games")
         connection.execute("DELETE FROM game_providers")
         connection.commit()

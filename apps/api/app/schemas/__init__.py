@@ -8,6 +8,14 @@ from app.schemas.game_provider import (
     GameProviderRead,
     GameProviderUpdate,
 )
+from app.schemas.roi import (
+    RoiBase,
+    RoiCreate,
+    RoiRead,
+    RoiSetCreate,
+    RoiSetRead,
+    RoiSetUpdate,
+)
 
 __all__ = [
     "GameBase",
@@ -20,4 +28,10 @@ __all__ = [
     "GameProviderUpdate",
     "GameRead",
     "GameUpdate",
+    "RoiBase",
+    "RoiCreate",
+    "RoiRead",
+    "RoiSetCreate",
+    "RoiSetRead",
+    "RoiSetUpdate",
 ]

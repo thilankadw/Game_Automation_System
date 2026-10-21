@@ -1,10 +1,10 @@
 """Business logic for game providers."""
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import GameProvider
+from app.models import Game, GameProvider, RoiSet
 from app.schemas import GameProviderCreate, GameProviderUpdate
 
 
@@ -112,7 +112,10 @@ async def update_game_provider(
 
 
 async def delete_game_provider(db: AsyncSession, provider_id: int) -> None:
-    """Delete a game provider.
+    """Delete a game provider and its ROI sets.
+
+    Games that referenced the provider's ROI sets are detached first so they
+    do not keep stale set IDs when SQLite foreign keys are not enforced.
 
     Args:
         db: Active database session.
@@ -122,5 +125,13 @@ async def delete_game_provider(db: AsyncSession, provider_id: int) -> None:
         HTTPException: If the game provider does not exist.
     """
     provider = await get_game_provider(db, provider_id)
+    provider_roi_set_ids = select(RoiSet.id).where(
+        RoiSet.game_provider_id == provider_id
+    )
+    await db.execute(
+        update(Game)
+        .where(Game.roi_set_id.in_(provider_roi_set_ids))
+        .values(roi_set_id=None)
+    )
     await db.delete(provider)
     await db.commit()
