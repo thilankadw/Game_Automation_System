@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import engine, get_db
-from app.routers import game_providers
+from app.routers import game_providers, games
 
 
 @asynccontextmanager
@@ -24,6 +24,7 @@ app = FastAPI(title="Game Automation System API", lifespan=lifespan)
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 app.include_router(game_providers.router)
+app.include_router(games.router)
 
 
 @app.get("/health")
