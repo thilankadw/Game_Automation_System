@@ -8,12 +8,21 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import SCREENSHOT_DIR
 from app.db import engine, get_db
-from app.routers import game_providers, games, roi_capture, roi_sets
+from app.routers import (
+    game_providers,
+    games,
+    roi_capture,
+    roi_sets,
+    screenshot_capture,
+)
 from app.services.roi_capture import manager as roi_capture_manager
+from app.services.screenshot_capture import manager as screenshot_manager
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +34,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         asyncio.get_running_loop(), asyncio.ProactorEventLoop
     ):
         # uvicorn's --reload factory picks a SelectorEventLoop on Windows,
-        # which cannot spawn the Playwright driver used for ROI capture.
+        # which cannot spawn the Playwright driver used for browser capture.
         logger.warning(
-            "ROI capture needs a Proactor event loop on Windows. "
-            "Restart uvicorn with --loop none."
+            "ROI and screenshot capture need a Proactor event loop on "
+            "Windows. Restart uvicorn with --loop none."
         )
     yield
     await roi_capture_manager.shutdown()
+    await screenshot_manager.shutdown()
     await engine.dispose()
 
 
@@ -43,6 +53,12 @@ app.include_router(game_providers.router)
 app.include_router(games.router)
 app.include_router(roi_sets.router)
 app.include_router(roi_capture.router)
+app.include_router(screenshot_capture.router)
+app.mount(
+    "/screenshots",
+    StaticFiles(directory=SCREENSHOT_DIR),
+    name="screenshots",
+)
 
 
 @app.get("/health")

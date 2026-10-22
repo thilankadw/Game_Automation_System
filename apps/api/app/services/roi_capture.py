@@ -11,8 +11,6 @@ an existing provider ROI set.
 from __future__ import annotations
 
 import asyncio
-import ctypes
-import sys
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -36,36 +34,13 @@ from app.db import SessionLocal
 from app.schemas.roi import RoiCreate, RoiSetUpdate
 from app.services import games as game_service
 from app.services import roi_sets as roi_set_service
+from app.services.browser import LAUNCH_ARGS, viewport_size
 
 _OVERLAY_PATH = Path(__file__).resolve().parent.parent / "static" / "roi_overlay.js"
 _OVERLAY_SCRIPT = _OVERLAY_PATH.read_text(encoding="utf-8")
 
 _BINDING_NAME = "__roiCapture"
-_VIEWPORT_RATIO = 0.75
-_FALLBACK_VIEWPORT = (1024, 768)
 _NAVIGATION_TIMEOUT_MS = 45_000
-_LAUNCH_ARGS = ["--disable-dev-shm-usage", "--no-first-run"]
-
-
-def _viewport_size() -> tuple[int, int]:
-    """Return three quarters of the primary display in CSS pixels.
-
-    On Windows, ``GetSystemMetrics`` reports the display in the same virtual
-    (CSS) pixels Chrome uses because Python runs DPI-unaware by default.
-    """
-    if sys.platform == "win32":
-        try:
-            user32 = ctypes.windll.user32
-            width = int(user32.GetSystemMetrics(0))
-            height = int(user32.GetSystemMetrics(1))
-        except (AttributeError, OSError):
-            width = height = 0
-        if width > 0 and height > 0:
-            return (
-                max(1, round(width * _VIEWPORT_RATIO)),
-                max(1, round(height * _VIEWPORT_RATIO)),
-            )
-    return _FALLBACK_VIEWPORT
 
 
 @dataclass
@@ -222,7 +197,7 @@ class RoiCaptureManager:
                 return self._browser
             try:
                 self._browser = await playwright.chromium.launch(
-                    channel="chrome", headless=False, args=_LAUNCH_ARGS
+                    channel="chrome", headless=False, args=list(LAUNCH_ARGS)
                 )
             except PlaywrightError as exc:
                 raise HTTPException(
@@ -253,7 +228,7 @@ class RoiCaptureManager:
         game = await game_service.get_game(db, game_id)
         browser = await self._ensure_browser()
 
-        viewport_width, viewport_height = _viewport_size()
+        viewport_width, viewport_height = viewport_size()
         context = await browser.new_context(
             viewport={"width": viewport_width, "height": viewport_height},
             device_scale_factor=1,

@@ -1,11 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 
 import { SearchableProviderSelect } from "@/components/searchable-provider-select";
-import { createGameAction, updateGameAction } from "@/lib/actions";
-import type { Game, GameInput, GameProvider } from "@/lib/api";
+import {
+  createGameAction,
+  getRoiSetsAction,
+  updateGameAction,
+} from "@/lib/actions";
+import type { Game, GameInput, GameProvider, RoiSet } from "@/lib/api";
 
 export interface GameFormProps {
   providers: GameProvider[];
@@ -24,15 +35,63 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
   const [numberOfSpins, setNumberOfSpins] = useState(
     String(game?.number_of_spins ?? 1000),
   );
+  const [spinWaitSeconds, setSpinWaitSeconds] = useState(
+    String(game?.spin_wait_seconds ?? 12),
+  );
   const [providerId, setProviderId] = useState<number | null>(
     game?.game_provider_id ?? null,
   );
+  const [roiSetId, setRoiSetId] = useState<number | null>(
+    game?.roi_set_id ?? null,
+  );
+  const [roiSets, setRoiSets] = useState<RoiSet[]>(
+    game?.roi_set ? [game.roi_set] : [],
+  );
+  const [isLoadingRoiSets, setIsLoadingRoiSets] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    if (providerId === null) {
+      setRoiSets([]);
+      setRoiSetId(null);
+      setIsLoadingRoiSets(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingRoiSets(true);
+
+    void getRoiSetsAction(providerId).then((result) => {
+      if (cancelled) {
+        return;
+      }
+
+      setIsLoadingRoiSets(false);
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setRoiSets(result.roiSets);
+      // Drop a selection that belongs to a different provider.
+      setRoiSetId((current) =>
+        current !== null &&
+        result.roiSets.some((roiSet) => roiSet.id === current)
+          ? current
+          : null,
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [providerId]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isPending) {
+    if (isPending || isLoadingRoiSets) {
       return;
     }
 
@@ -47,7 +106,9 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
       name,
       url,
       number_of_spins: Number(numberOfSpins),
+      spin_wait_seconds: Number(spinWaitSeconds),
       game_provider_id: providerId,
+      roi_set_id: roiSetId,
     };
 
     startTransition(async () => {
@@ -99,6 +160,50 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
       />
 
       <div className="form-field">
+        <label className="form-label" htmlFor={`${fieldId}-roi-set`}>
+          ROI set
+        </label>
+        <select
+          className="input"
+          disabled={providerId === null || isLoadingRoiSets}
+          id={`${fieldId}-roi-set`}
+          onChange={(event) =>
+            setRoiSetId(
+              event.target.value ? Number(event.target.value) : null,
+            )
+          }
+          value={roiSetId === null ? "" : String(roiSetId)}
+        >
+          <option value="">
+            {providerId === null ? "Select a provider first" : "No ROI set"}
+          </option>
+          {roiSets.map((roiSet) => (
+            <option key={roiSet.id} value={roiSet.id}>
+              {roiSet.name} · {roiSet.rois.length} region
+              {roiSet.rois.length === 1 ? "" : "s"}
+            </option>
+          ))}
+        </select>
+        <p className="form-hint">
+          {providerId === null ? (
+            "Choose a provider to load its ROI sets."
+          ) : isLoadingRoiSets ? (
+            "Loading ROI sets…"
+          ) : roiSets.length === 0 ? (
+            <>
+              No ROI sets for this provider.{" "}
+              <Link href={`/providers/${providerId}`}>
+                Create one on the provider page
+              </Link>
+              .
+            </>
+          ) : (
+            "Use the layout that marks the spin button, balance, bet, and win."
+          )}
+        </p>
+      </div>
+
+      <div className="form-field">
         <label className="form-label" htmlFor={`${fieldId}-url`}>
           Game URL
         </label>
@@ -130,6 +235,26 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
         />
       </div>
 
+      <div className="form-field">
+        <label className="form-label" htmlFor={`${fieldId}-wait`}>
+          Spin wait (seconds)
+        </label>
+        <input
+          className="input"
+          id={`${fieldId}-wait`}
+          min={0}
+          onChange={(event) => setSpinWaitSeconds(event.target.value)}
+          required
+          step={1}
+          type="number"
+          value={spinWaitSeconds}
+        />
+        <p className="form-hint">
+          Time to wait after each spin before the screenshot is captured.
+          Defaults to 12 seconds.
+        </p>
+      </div>
+
       <div className="form-actions">
         <button
           className="button button-ghost"
@@ -139,7 +264,11 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
         >
           Cancel
         </button>
-        <button className="button button-primary" disabled={isPending} type="submit">
+        <button
+          className="button button-primary"
+          disabled={isPending || isLoadingRoiSets}
+          type="submit"
+        >
           {isPending ? "Saving…" : game ? "Save changes" : "Create game"}
         </button>
       </div>

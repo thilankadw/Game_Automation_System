@@ -9,7 +9,9 @@ import {
   type GameProviderInput,
   type RoiInput,
   type RoiName,
+  type RoiSet,
   type RoiSetInput,
+  type ScreenshotCaptureSession,
   ApiError,
   createGame,
   createProvider,
@@ -18,11 +20,25 @@ import {
   deleteProvider,
   deleteRoiSet,
   getProvidersPage,
+  getRoiSets,
+  getScreenshotCaptureSession,
   startRoiCapture,
+  startScreenshotCapture,
+  stopScreenshotCapture,
   updateGame,
   updateProvider,
   updateRoiSet,
 } from "@/lib/api";
+
+/** Result of a screenshot capture action that returns session state. */
+export type ScreenshotSessionResult =
+  | { ok: true; session: ScreenshotCaptureSession }
+  | { ok: false; error: string };
+
+/** Result of loading a provider's ROI sets for the game form. */
+export type RoiSetListResult =
+  | { ok: true; roiSets: RoiSet[] }
+  | { ok: false; error: string };
 
 /** Convert an unknown failure into a message that is safe to show in the UI. */
 function errorMessage(error: unknown): string {
@@ -65,11 +81,18 @@ function normalizeGameInput(input: GameInput): GameInput | string {
     return "Number of spins must be a non-negative whole number.";
   }
 
+  const spinWait = Number(input.spin_wait_seconds);
+  if (!Number.isInteger(spinWait) || spinWait < 0) {
+    return "Spin wait must be a non-negative whole number of seconds.";
+  }
+
   return {
     name,
     url,
     number_of_spins: spins,
+    spin_wait_seconds: spinWait,
     game_provider_id: input.game_provider_id,
+    roi_set_id: input.roi_set_id ?? null,
   };
 }
 
@@ -243,6 +266,17 @@ export async function deleteProviderAction(
   }
 }
 
+/** Load a provider's ROI sets so a game can be assigned one. */
+export async function getRoiSetsAction(
+  providerId: number,
+): Promise<RoiSetListResult> {
+  try {
+    return { ok: true, roiSets: await getRoiSets(providerId) };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
 /** Create a ROI set for a provider; a blank name lets the API auto-name it. */
 export async function createRoiSetAction(
   providerId: number,
@@ -300,6 +334,42 @@ export async function startRoiCaptureAction(
 ): Promise<ActionResult> {
   try {
     await startRoiCapture(gameId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Start an automated screenshot run for a game. */
+export async function startScreenshotCaptureAction(
+  gameId: number,
+): Promise<ScreenshotSessionResult> {
+  try {
+    const session = await startScreenshotCapture(gameId);
+    return { ok: true, session };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Poll a screenshot run for its latest progress. */
+export async function getScreenshotCaptureSessionAction(
+  sessionId: string,
+): Promise<ScreenshotSessionResult> {
+  try {
+    const session = await getScreenshotCaptureSession(sessionId);
+    return { ok: true, session };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Stop a running screenshot capture. */
+export async function stopScreenshotCaptureAction(
+  sessionId: string,
+): Promise<ActionResult> {
+  try {
+    await stopScreenshotCapture(sessionId);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
