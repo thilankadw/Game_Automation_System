@@ -13,9 +13,26 @@ export interface GameProvider {
   name: string;
 }
 
+/** UI elements that can be marked with a ROI. */
+export type RoiName =
+  | "canvas"
+  | "spin_button"
+  | "balance"
+  | "bet"
+  | "win";
+
 export interface Roi {
   id: number;
   name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Fields accepted when creating or replacing ROIs. */
+export interface RoiInput {
+  name: RoiName;
   x: number;
   y: number;
   width: number;
@@ -29,6 +46,12 @@ export interface RoiSet {
   rois: Roi[];
 }
 
+/** Fields accepted when creating or updating a ROI set. */
+export interface RoiSetInput {
+  name?: string;
+  rois?: RoiInput[];
+}
+
 export interface Game {
   id: number;
   name: string;
@@ -39,11 +62,35 @@ export interface Game {
   roi_set: RoiSet | null;
 }
 
+/** Fields accepted when creating or updating a game. */
+export interface GameInput {
+  name: string;
+  number_of_spins: number;
+  url: string;
+  game_provider_id: number;
+}
+
+/** Fields accepted when creating or updating a game provider. */
+export interface GameProviderInput {
+  name: string;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
   skip: number;
   limit: number;
+}
+
+/** A live Chrome window used to draw ROIs for a game. */
+export interface RoiCaptureSession {
+  id: string;
+  game_id: number;
+  game_name: string;
+  provider_id: number;
+  url: string;
+  existing_roi_set_id: number | null;
+  created_at: string;
 }
 
 export interface HealthStatus {
@@ -64,24 +111,56 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Extract a human-readable message from a FastAPI error payload.
+ *
+ * FastAPI returns a plain string for handled errors and an array of validation
+ * objects for request errors, so both shapes need to be understood.
+ */
+function readErrorDetail(detail: unknown): string | null {
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail.flatMap((entry) => {
+      if (
+        typeof entry === "object" &&
+        entry !== null &&
+        "msg" in entry &&
+        typeof entry.msg === "string"
+      ) {
+        return [entry.msg];
+      }
+      return [];
+    });
+
+    return messages.length > 0 ? messages.join(" ") : null;
+  }
+
+  return null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { headers: initHeaders, ...initOptions } = init ?? {};
+  const headers = new Headers(initHeaders);
+  headers.set("Accept", "application/json");
+  if (initOptions.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     cache: "no-store",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...init?.headers,
-    },
-    signal: init?.signal ?? AbortSignal.timeout(8000),
+    ...initOptions,
+    headers,
+    signal: initOptions.signal ?? AbortSignal.timeout(8000),
   });
 
   if (!response.ok) {
     let detail = response.statusText;
     try {
       const body = (await response.json()) as { detail?: unknown };
-      if (typeof body.detail === "string") {
-        detail = body.detail;
-      }
+      detail = readErrorDetail(body.detail) ?? detail;
     } catch {
       // Keep the HTTP status text when the body is not JSON.
     }
@@ -145,10 +224,151 @@ export function getRoiSets(providerId: number): Promise<RoiSet[]> {
 }
 
 /**
+ * Create a ROI set for a game provider.
+ *
+ * Omitting `name` lets the API generate the next "Option N" label.
+ */
+export function createRoiSet(
+  providerId: number,
+  input: RoiSetInput,
+): Promise<RoiSet> {
+  return request<RoiSet>(`/game-providers/${providerId}/roi-sets`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Replace a ROI set's name and full list of regions.
+ */
+export function updateRoiSet(
+  roiSetId: number,
+  input: RoiSetInput,
+): Promise<RoiSet> {
+  return request<RoiSet>(`/roi-sets/${roiSetId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Delete a ROI set and its regions.
+ */
+export function deleteRoiSet(roiSetId: number): Promise<void> {
+  return request<void>(`/roi-sets/${roiSetId}`, { method: "DELETE" });
+}
+
+/**
  * Fetch the API health status.
  */
 export function getHealth(): Promise<HealthStatus> {
   return request<HealthStatus>("/health");
+}
+
+/**
+ * Open a live Chrome window to play the game and draw its ROIs.
+ *
+ * Browser launch and page load can exceed the default request timeout, so
+ * this call allows up to sixty seconds.
+ */
+export function startRoiCapture(gameId: number): Promise<RoiCaptureSession> {
+  return request<RoiCaptureSession>("/roi-capture/sessions", {
+    method: "POST",
+    body: JSON.stringify({ game_id: gameId }),
+    signal: AbortSignal.timeout(60000),
+  });
+}
+
+/**
+ * Fetch every live ROI capture session.
+ */
+export function getRoiCaptureSessions(): Promise<RoiCaptureSession[]> {
+  return request<RoiCaptureSession[]>("/roi-capture/sessions");
+}
+
+/**
+ * Fetch a single live ROI capture session.
+ */
+export function getRoiCaptureSession(
+  sessionId: string,
+): Promise<RoiCaptureSession> {
+  return request<RoiCaptureSession>(
+    `/roi-capture/sessions/${encodeURIComponent(sessionId)}`,
+  );
+}
+
+/**
+ * Close a live ROI capture session and its Chrome window.
+ */
+export function stopRoiCapture(sessionId: string): Promise<void> {
+  return request<void>(
+    `/roi-capture/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+/**
+ * Create a game.
+ */
+export function createGame(input: GameInput): Promise<Game> {
+  return request<Game>("/games", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Update a game.
+ */
+export function updateGame(
+  gameId: number,
+  input: GameInput,
+): Promise<Game> {
+  return request<Game>(`/games/${gameId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Delete a game.
+ */
+export function deleteGame(gameId: number): Promise<void> {
+  return request<void>(`/games/${gameId}`, { method: "DELETE" });
+}
+
+/**
+ * Create a game provider.
+ */
+export function createProvider(
+  input: GameProviderInput,
+): Promise<GameProvider> {
+  return request<GameProvider>("/game-providers", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Update a game provider.
+ */
+export function updateProvider(
+  providerId: number,
+  input: GameProviderInput,
+): Promise<GameProvider> {
+  return request<GameProvider>(`/game-providers/${providerId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Delete a game provider.
+ */
+export function deleteProvider(providerId: number): Promise<void> {
+  return request<void>(`/game-providers/${providerId}`, {
+    method: "DELETE",
+  });
 }
 
 /**

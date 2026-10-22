@@ -879,6 +879,11 @@ button {
   color: var(--text);
 }
 
+.button > svg {
+  width: 13px;
+  height: 13px;
+}
+
 .button-primary {
   border-color: var(--accent-line);
   background: var(--accent);
@@ -1193,6 +1198,64 @@ button {
   font-size: 10px;
 }
 
+.roi-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.roi-form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roi-form-region {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+
+.roi-form-legend {
+  padding: 0 4px;
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.roi-form-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.roi-form-input {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.roi-form-input .input {
+  padding: 6px 8px;
+  font-size: 10.5px;
+}
+
+.roi-form-clear {
+  margin-bottom: 1px;
+}
+
 .provider-game-list {
   display: flex;
   flex-direction: column;
@@ -1300,7 +1363,7 @@ button {
 .provider-card {
   display: flex;
   flex-direction: column;
-  padding: 18px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
@@ -1311,6 +1374,23 @@ button {
     border-color 180ms ease,
     transform 180ms ease,
     box-shadow 180ms ease;
+}
+
+.provider-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 18px 18px 14px;
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+
+.provider-card-actions .button {
+  flex: 1;
 }
 
 .provider-card:hover {
@@ -1386,6 +1466,237 @@ button {
   margin-top: auto;
   color: var(--accent);
   font-size: 10px;
+}
+
+.button-sm {
+  padding: 6px 10px;
+  font-size: 9.5px;
+}
+
+.button-danger {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.button-danger:hover {
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.data-table .table-actions {
+  text-align: right;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.modal {
+  overflow-y: auto;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, rgba(18, 27, 39, 0.98), rgba(9, 14, 22, 0.98)),
+    var(--surface);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
+  color: var(--text);
+}
+
+.modal::backdrop {
+  background: rgba(2, 5, 9, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.modal-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.modal-description {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.icon-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.icon-button:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px 22px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9.5px;
+}
+
+.form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 10.5px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.confirm-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.confirm-copy strong {
+  color: var(--text);
+}
+
+.combobox {
+  position: relative;
+}
+
+.combobox-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.combobox-input-wrap svg {
+  position: absolute;
+  left: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.combobox .input {
+  padding-left: 34px;
+}
+
+.combobox-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 230px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  margin: 0;
+  background: var(--surface-raised);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.95);
+  list-style: none;
+}
+
+.combobox-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.combobox-option[data-active="true"],
+.combobox-option:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.combobox-option[aria-selected="true"] {
+  color: var(--accent);
+}
+
+.combobox-option-id {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.combobox-status {
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
 }
 
 .sr-only {
@@ -1565,6 +1876,37 @@ button {
 
   .roi-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section-heading {
+    flex-wrap: wrap;
+  }
+
+  .roi-form-inputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roi-form-clear {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .modal-header,
+  .modal-form {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .provider-card-body {
+    padding: 16px 16px 12px;
+  }
+
+  .provider-card-actions {
+    padding: 0 16px 16px;
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
   }
 }
 

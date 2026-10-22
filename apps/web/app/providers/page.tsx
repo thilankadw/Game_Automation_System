@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DeleteButton } from "@/components/delete-button";
 import { EmptyState } from "@/components/empty-state";
 import {
   ArrowRightIcon,
@@ -7,6 +8,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { ProviderFormButton } from "@/components/provider-form-button";
 import {
   type Game,
   type GameProvider,
@@ -83,9 +85,15 @@ export default async function ProvidersPage({
     <>
       <PageHeader
         actions={
-          <span className="status-pill" data-online={providersPage !== null}>
-            {providersPage !== null ? "API connected" : "API offline"}
-          </span>
+          <>
+            <ProviderFormButton
+              triggerClassName="button button-primary"
+              triggerLabel="Add provider"
+            />
+            <span className="status-pill" data-online={providersPage !== null}>
+              {providersPage !== null ? "API connected" : "API offline"}
+            </span>
+          </>
         }
         description="The studios and platforms behind each title, with ROI coverage at a glance."
         eyebrow="Integrations"
@@ -128,47 +136,60 @@ export default async function ProvidersPage({
       {cards.length > 0 ? (
         <div className="provider-card-grid">
           {cards.map((card) => (
-            <Link
-              className="provider-card"
-              href={`/providers/${card.provider.id}`}
-              key={card.provider.id}
-            >
-              <div className="provider-card-top">
-                <span className="provider-avatar provider-avatar-lg">
-                  {getInitials(card.provider.name)}
-                </span>
-                <span className="badge badge-muted">
-                  #{card.provider.id}
-                </span>
-              </div>
-              <h2 className="provider-card-name">{card.provider.name}</h2>
-              <p className="provider-card-meta">
-                {card.games !== null
-                  ? `${formatNumber(card.games)} games`
-                  : "Game data unavailable"}{" "}
-                ·{" "}
-                {card.roiSets !== null
-                  ? `${formatNumber(card.roiSets)} ROI sets`
-                  : "ROI data unavailable"}
-              </p>
-              <div className="provider-card-stats">
-                <div className="provider-stat">
-                  <p className="provider-stat-value">
-                    {card.games !== null ? formatNumber(card.games) : "—"}
-                  </p>
-                  <p className="provider-stat-label">Games</p>
+            <article className="provider-card" key={card.provider.id}>
+              <Link
+                className="provider-card-body"
+                href={`/providers/${card.provider.id}`}
+              >
+                <div className="provider-card-top">
+                  <span className="provider-avatar provider-avatar-lg">
+                    {getInitials(card.provider.name)}
+                  </span>
+                  <span className="badge badge-muted">
+                    #{card.provider.id}
+                  </span>
                 </div>
-                <div className="provider-stat">
-                  <p className="provider-stat-value">
-                    {card.roiSets !== null ? formatNumber(card.roiSets) : "—"}
-                  </p>
-                  <p className="provider-stat-label">ROI sets</p>
+                <h2 className="provider-card-name">{card.provider.name}</h2>
+                <p className="provider-card-meta">
+                  {card.games !== null
+                    ? `${formatNumber(card.games)} games`
+                    : "Game data unavailable"}{" "}
+                  ·{" "}
+                  {card.roiSets !== null
+                    ? `${formatNumber(card.roiSets)} ROI sets`
+                    : "ROI data unavailable"}
+                </p>
+                <div className="provider-card-stats">
+                  <div className="provider-stat">
+                    <p className="provider-stat-value">
+                      {card.games !== null ? formatNumber(card.games) : "—"}
+                    </p>
+                    <p className="provider-stat-label">Games</p>
+                  </div>
+                  <div className="provider-stat">
+                    <p className="provider-stat-value">
+                      {card.roiSets !== null ? formatNumber(card.roiSets) : "—"}
+                    </p>
+                    <p className="provider-stat-label">ROI sets</p>
+                  </div>
                 </div>
+                <span className="provider-card-arrow">
+                  Open workspace <ArrowRightIcon />
+                </span>
+              </Link>
+              <div className="provider-card-actions">
+                <ProviderFormButton
+                  provider={card.provider}
+                  triggerClassName="button button-sm"
+                  triggerLabel="Edit"
+                />
+                <DeleteButton
+                  id={card.provider.id}
+                  kind="provider"
+                  name={card.provider.name}
+                />
               </div>
-              <span className="provider-card-arrow">
-                Open workspace <ArrowRightIcon />
-              </span>
-            </Link>
+            </article>
           ))}
         </div>
       ) : (
@@ -178,7 +199,7 @@ export default async function ProvidersPage({
               providersPage
                 ? query
                   ? "Try a different provider name or clear the search."
-                  : "Create a provider through the API to start grouping games and ROI sets."
+                  : "Use Add provider to start grouping games and ROI sets."
                 : "Start the API server and reload this page to load providers."
             }
             icon={<ProvidersIcon />}

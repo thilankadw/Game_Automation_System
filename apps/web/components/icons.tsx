@@ -141,4 +141,22 @@ export function CrosshairIcon(props: IconProps) {
   );
 }
 
+/** Renders a plus icon for create actions. */
+export function PlusIcon(props: IconProps) {
+  return (
+    <IconFrame {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </IconFrame>
+  );
+}
+
+/** Renders an X icon for dismissing dialogs. */
+export function CloseIcon(props: IconProps) {
+  return (
+    <IconFrame {...props}>
+      <path d="m6 6 12 12M18 6 6 18" />
+    </IconFrame>
+  );
+}
+
 

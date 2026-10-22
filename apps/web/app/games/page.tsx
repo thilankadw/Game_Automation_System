@@ -1,12 +1,15 @@
 import Link from "next/link";
 
+import { DeleteButton } from "@/components/delete-button";
 import { EmptyState } from "@/components/empty-state";
+import { GameFormButton } from "@/components/game-form-button";
 import {
   DatabaseIcon,
   ExternalLinkIcon,
   SearchIcon,
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { RoiCaptureButton } from "@/components/roi-capture-button";
 import {
   type Game,
   type GameProvider,
@@ -90,9 +93,16 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
     <>
       <PageHeader
         actions={
-          <span className="status-pill" data-online={gamesPage !== null}>
-            {gamesPage !== null ? "API connected" : "API offline"}
-          </span>
+          <>
+            <GameFormButton
+              providers={providers ?? []}
+              triggerLabel="Add game"
+              triggerClassName="button button-primary"
+            />
+            <span className="status-pill" data-online={gamesPage !== null}>
+              {gamesPage !== null ? "API connected" : "API offline"}
+            </span>
+          </>
         }
         description="Every title wired into the automation catalog, with its provider and capture layout."
         eyebrow="Catalog"
@@ -149,6 +159,9 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
                       Spins
                     </th>
                     <th scope="col">ROI set</th>
+                    <th className="table-actions" scope="col">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,6 +196,25 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
                         ) : (
                           <span className="badge badge-muted">Unassigned</span>
                         )}
+                      </td>
+                      <td className="table-actions">
+                        <div className="row-actions">
+                          <RoiCaptureButton
+                            gameId={game.id}
+                            gameName={game.name}
+                          />
+                          <GameFormButton
+                            game={game}
+                            providers={providers ?? []}
+                            triggerClassName="button button-sm"
+                            triggerLabel="Edit"
+                          />
+                          <DeleteButton
+                            id={game.id}
+                            kind="game"
+                            name={game.name}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -221,7 +253,7 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
               gamesPage
                 ? query
                   ? "Try a different game name or clear the search."
-                  : "Create a game through the API to populate the catalog."
+                  : "Use Add game to create the first entry in the catalog."
                 : "Start the API server and reload this page to load the catalog."
             }
             icon={<DatabaseIcon />}

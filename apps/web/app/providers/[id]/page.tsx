@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
+import { DeleteButton } from "@/components/delete-button";
 import {
   ArrowLeftIcon,
   CrosshairIcon,
@@ -10,6 +11,7 @@ import {
   LayersIcon,
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
+import { RoiSetFormButton } from "@/components/roi-set-form-button";
 import {
   ApiError,
   type Game,
@@ -131,6 +133,7 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
           <h2>ROI sets</h2>
           <p>Capture layouts available to this provider&apos;s games.</p>
         </div>
+        <RoiSetFormButton providerId={provider.id} triggerLabel="Add ROI set" />
       </div>
 
       {roiSets && roiSets.length > 0 ? (
@@ -163,6 +166,19 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
               ) : (
                 <p className="roi-empty">No regions defined for this set.</p>
               )}
+              <div className="roi-card-actions">
+                <RoiSetFormButton
+                  providerId={provider.id}
+                  roiSet={roiSet}
+                  triggerClassName="button button-sm"
+                  triggerLabel="Edit"
+                />
+                <DeleteButton
+                  id={roiSet.id}
+                  kind="roi-set"
+                  name={roiSet.name}
+                />
+              </div>
             </article>
           ))}
         </div>
@@ -171,7 +187,7 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
           <EmptyState
             description={
               roiSets
-                ? "Add a ROI set through the API to capture this provider's UI."
+                ? "Use Add ROI set to create one, then draw its regions from the Games page."
                 : "Start the API server and reload this page to load ROI sets."
             }
             icon={<CrosshairIcon />}
