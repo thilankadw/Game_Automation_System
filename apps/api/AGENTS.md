@@ -20,13 +20,20 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
+ROI capture launches the installed Google Chrome through Playwright, so Chrome must
+be available on the machine. No `playwright install` download is needed when
+`channel="chrome"` is used. If Chrome is missing, run
+`.\.venv\Scripts\playwright.exe install chromium` as a fallback.
+
 ## Commands
 
 Run these commands from `apps/api`:
 
 ```powershell
 # Development server
-.\.venv\Scripts\uvicorn.exe app.main:app --reload
+# --loop none keeps the default Proactor loop on Windows so Playwright can
+# spawn Chrome for ROI capture while --reload is active.
+.\.venv\Scripts\uvicorn.exe app.main:app --reload --loop none
 
 # Lint
 .\.venv\Scripts\ruff.exe check app

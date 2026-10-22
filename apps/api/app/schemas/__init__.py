@@ -16,6 +16,10 @@ from app.schemas.roi import (
     RoiSetRead,
     RoiSetUpdate,
 )
+from app.schemas.roi_capture import (
+    RoiCaptureSessionCreate,
+    RoiCaptureSessionRead,
+)
 
 __all__ = [
     "GameBase",
@@ -29,6 +33,8 @@ __all__ = [
     "GameRead",
     "GameUpdate",
     "RoiBase",
+    "RoiCaptureSessionCreate",
+    "RoiCaptureSessionRead",
     "RoiCreate",
     "RoiRead",
     "RoiSetCreate",

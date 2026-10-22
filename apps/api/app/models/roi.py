@@ -12,9 +12,13 @@ if TYPE_CHECKING:
     from app.models.game_provider import GameProvider
 
 
+_ROI_NAMES = ("canvas", "spin_button", "balance", "bet", "win")
+
+
 class RoiName(StrEnum):
     """UI elements that can be marked on a provider or game screen."""
 
+    CANVAS = "canvas"
     SPIN_BUTTON = "spin_button"
     BALANCE = "balance"
     BET = "bet"
@@ -60,7 +64,7 @@ class Roi(Base):
     __tablename__ = "rois"
     __table_args__ = (
         CheckConstraint(
-            "name IN ('spin_button', 'balance', 'bet', 'win')",
+            f"name IN {_ROI_NAMES}",
             name="ck_rois_name",
         ),
         UniqueConstraint("roi_set_id", "name", name="uq_rois_set_name"),

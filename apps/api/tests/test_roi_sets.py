@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-ROI_NAMES = ["spin_button", "balance", "bet", "win"]
+ROI_NAMES = ["canvas", "spin_button", "balance", "bet", "win"]
 
 
 def _rois() -> list[dict[str, object]]:
@@ -23,7 +23,7 @@ def _create_provider(client: TestClient, name: str = "Steam") -> int:
 def _create_roi_set(
     client: TestClient, provider_id: int, **overrides: object
 ) -> dict[str, object]:
-    """Create a ROI set with four ROIs and return the response body."""
+    """Create a ROI set with five ROIs and return the response body."""
     payload: dict[str, object] = {"name": "Option 1", "rois": _rois()}
     payload.update(overrides)
     response = client.post(
@@ -34,7 +34,7 @@ def _create_roi_set(
 
 
 def test_create_and_get_roi_set(client: TestClient) -> None:
-    """A created ROI set stores all four ROI types and can be fetched."""
+    """A created ROI set stores all five ROI types and can be fetched."""
     provider_id = _create_provider(client)
 
     roi_set = _create_roi_set(client, provider_id)
