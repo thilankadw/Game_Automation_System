@@ -22,6 +22,9 @@ class Game(Base):
     number_of_spins: Mapped[int] = mapped_column(
         default=1000, server_default="1000"
     )
+    spin_wait_seconds: Mapped[int] = mapped_column(
+        default=12, server_default="12"
+    )
     url: Mapped[str] = mapped_column(String(2048))
     game_provider_id: Mapped[int] = mapped_column(
         ForeignKey("game_providers.id")

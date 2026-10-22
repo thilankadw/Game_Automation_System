@@ -10,6 +10,7 @@ class GameBase(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     number_of_spins: int = Field(default=1000, ge=0)
+    spin_wait_seconds: int = Field(default=12, ge=0)
     url: str = Field(min_length=1, max_length=2048)
     game_provider_id: int = Field(gt=0)
 
@@ -37,6 +38,7 @@ class GameUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     number_of_spins: int | None = Field(default=None, ge=0)
+    spin_wait_seconds: int | None = Field(default=None, ge=0)
     url: str | None = Field(default=None, min_length=1, max_length=2048)
     game_provider_id: int | None = Field(default=None, gt=0)
     roi_set_id: int | None = Field(default=None, gt=0)

@@ -56,6 +56,7 @@ export interface Game {
   id: number;
   name: string;
   number_of_spins: number;
+  spin_wait_seconds: number;
   url: string;
   game_provider_id: number;
   roi_set_id: number | null;
@@ -66,8 +67,10 @@ export interface Game {
 export interface GameInput {
   name: string;
   number_of_spins: number;
+  spin_wait_seconds: number;
   url: string;
   game_provider_id: number;
+  roi_set_id: number | null;
 }
 
 /** Fields accepted when creating or updating a game provider. */
@@ -91,6 +94,33 @@ export interface RoiCaptureSession {
   url: string;
   existing_roi_set_id: number | null;
   created_at: string;
+}
+
+/** Lifecycle of an automated screenshot run. */
+export type ScreenshotCaptureStatus =
+  | "starting"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+/** Progress and output details for an automated screenshot run. */
+export interface ScreenshotCaptureSession {
+  id: string;
+  game_id: number;
+  game_name: string;
+  url: string;
+  roi_set_id: number;
+  roi_set_name: string;
+  total_spins: number;
+  spin_wait_seconds: number;
+  completed_spins: number;
+  status: ScreenshotCaptureStatus;
+  error: string | null;
+  output_path: string;
+  latest_screenshot: string | null;
+  created_at: string;
+  finished_at: string | null;
 }
 
 export interface HealthStatus {
@@ -303,6 +333,48 @@ export function getRoiCaptureSession(
 export function stopRoiCapture(sessionId: string): Promise<void> {
   return request<void>(
     `/roi-capture/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+/**
+ * Start an automated spin-and-screenshot run for a game.
+ */
+export function startScreenshotCapture(
+  gameId: number,
+): Promise<ScreenshotCaptureSession> {
+  return request<ScreenshotCaptureSession>("/screenshot-capture/sessions", {
+    method: "POST",
+    body: JSON.stringify({ game_id: gameId }),
+  });
+}
+
+/**
+ * Fetch every screenshot capture session.
+ */
+export function getScreenshotCaptureSessions(): Promise<
+  ScreenshotCaptureSession[]
+> {
+  return request<ScreenshotCaptureSession[]>("/screenshot-capture/sessions");
+}
+
+/**
+ * Fetch a screenshot capture session with its latest progress.
+ */
+export function getScreenshotCaptureSession(
+  sessionId: string,
+): Promise<ScreenshotCaptureSession> {
+  return request<ScreenshotCaptureSession>(
+    `/screenshot-capture/sessions/${encodeURIComponent(sessionId)}`,
+  );
+}
+
+/**
+ * Stop a running screenshot capture and close its Chrome context.
+ */
+export function stopScreenshotCapture(sessionId: string): Promise<void> {
+  return request<void>(
+    `/screenshot-capture/sessions/${encodeURIComponent(sessionId)}`,
     { method: "DELETE" },
   );
 }

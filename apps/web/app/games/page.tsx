@@ -10,7 +10,9 @@ import {
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { RoiCaptureButton } from "@/components/roi-capture-button";
+import { ScreenshotCaptureButton } from "@/components/screenshot-capture-button";
 import {
+  API_URL,
   type Game,
   type GameProvider,
   type Page,
@@ -187,6 +189,9 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
                       </td>
                       <td className="numeric">
                         {formatNumber(game.number_of_spins)}
+                        <span className="table-secondary">
+                          {game.spin_wait_seconds}s wait
+                        </span>
                       </td>
                       <td>
                         {game.roi_set ? (
@@ -200,6 +205,11 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
                       <td className="table-actions">
                         <div className="row-actions">
                           <RoiCaptureButton
+                            gameId={game.id}
+                            gameName={game.name}
+                          />
+                          <ScreenshotCaptureButton
+                            apiBaseUrl={API_URL}
                             gameId={game.id}
                             gameName={game.name}
                           />

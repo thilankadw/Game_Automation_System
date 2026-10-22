@@ -87,6 +87,7 @@ async def create_game(db: AsyncSession, data: GameCreate) -> Game:
     game = Game(
         name=data.name,
         number_of_spins=data.number_of_spins,
+        spin_wait_seconds=data.spin_wait_seconds,
         url=data.url,
         game_provider_id=data.game_provider_id,
         roi_set=roi_set,

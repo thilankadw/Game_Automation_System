@@ -56,6 +56,7 @@ def test_create_game_defaults_number_of_spins(client: TestClient) -> None:
         "id": game["id"],
         "name": "Starburst",
         "number_of_spins": 1000,
+        "spin_wait_seconds": 12,
         "url": "https://example.com/starburst",
         "game_provider_id": provider_id,
         "roi_set_id": None,
@@ -74,6 +75,19 @@ def test_create_game_with_custom_number_of_spins(client: TestClient) -> None:
 
     assert response.status_code == 201
     assert response.json()["number_of_spins"] == 250
+
+
+def test_create_game_with_custom_spin_wait(client: TestClient) -> None:
+    """The default spin wait can be overridden when creating a game."""
+    provider_id = _create_provider(client)
+
+    response = client.post(
+        "/games",
+        json=_game_payload(provider_id, spin_wait_seconds=5),
+    )
+
+    assert response.status_code == 201
+    assert response.json()["spin_wait_seconds"] == 5
 
 
 def test_create_rejects_unknown_provider(client: TestClient) -> None:

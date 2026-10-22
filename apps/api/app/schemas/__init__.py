@@ -20,6 +20,10 @@ from app.schemas.roi_capture import (
     RoiCaptureSessionCreate,
     RoiCaptureSessionRead,
 )
+from app.schemas.screenshot_capture import (
+    ScreenshotCaptureSessionCreate,
+    ScreenshotCaptureSessionRead,
+)
 
 __all__ = [
     "GameBase",
@@ -40,4 +44,6 @@ __all__ = [
     "RoiSetCreate",
     "RoiSetRead",
     "RoiSetUpdate",
+    "ScreenshotCaptureSessionCreate",
+    "ScreenshotCaptureSessionRead",
 ]
