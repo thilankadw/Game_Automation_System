@@ -123,6 +123,16 @@ export interface ScreenshotCaptureSession {
   finished_at: string | null;
 }
 
+/** A capture folder persisted on disk with its screenshot URLs. */
+export interface StoredScreenshotSession {
+  id: string;
+  created_at: string;
+  screenshot_count: number;
+  width: number;
+  height: number;
+  screenshots: string[];
+}
+
 export interface HealthStatus {
   status: string;
   database: string;
@@ -224,6 +234,44 @@ export function getGamesPage(params: {
   limit?: number;
 }): Promise<Page<Game>> {
   return request<Page<Game>>(`/games${buildQuery(params)}`);
+}
+
+/**
+ * Fetch a single game with its assigned ROI set and regions.
+ */
+export function getGame(gameId: number): Promise<Game> {
+  return request<Game>(`/games/${gameId}`);
+}
+
+/**
+ * Fetch screenshots persisted on disk for a game, newest session first.
+ */
+export function getStoredScreenshots(
+  gameId: number,
+): Promise<StoredScreenshotSession[]> {
+  return request<StoredScreenshotSession[]>(`/games/${gameId}/screenshots`);
+}
+
+/**
+ * Delete one stored screenshot session for a game.
+ */
+export function deleteStoredScreenshotSession(
+  gameId: number,
+  sessionId: string,
+): Promise<void> {
+  return request<void>(
+    `/games/${gameId}/screenshots/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+/**
+ * Delete every stored screenshot session for a game.
+ */
+export function deleteAllStoredScreenshots(gameId: number): Promise<void> {
+  return request<void>(`/games/${gameId}/screenshots`, {
+    method: "DELETE",
+  });
 }
 
 /**

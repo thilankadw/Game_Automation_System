@@ -23,6 +23,7 @@ from app.schemas.roi_capture import (
 from app.schemas.screenshot_capture import (
     ScreenshotCaptureSessionCreate,
     ScreenshotCaptureSessionRead,
+    StoredScreenshotSessionRead,
 )
 
 __all__ = [
@@ -46,4 +47,5 @@ __all__ = [
     "RoiSetUpdate",
     "ScreenshotCaptureSessionCreate",
     "ScreenshotCaptureSessionRead",
+    "StoredScreenshotSessionRead",
 ]

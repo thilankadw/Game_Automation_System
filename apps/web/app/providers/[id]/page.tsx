@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/empty-state";
 import { DeleteButton } from "@/components/delete-button";
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   CrosshairIcon,
-  ExternalLinkIcon,
   GamesIcon,
   LayersIcon,
 } from "@/components/icons";
@@ -208,12 +208,10 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
           <div className="card-body">
             <div className="provider-game-list">
               {providerGames.map((game) => (
-                <a
+                <Link
                   className="provider-game"
-                  href={game.url}
+                  href={`/games/${game.id}`}
                   key={game.id}
-                  rel="noreferrer"
-                  target="_blank"
                 >
                   <span>
                     <span className="provider-game-name">{game.name}</span>
@@ -222,8 +220,8 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
                       {game.roi_set ? game.roi_set.name : "No ROI set"}
                     </span>
                   </span>
-                  <ExternalLinkIcon />
-                </a>
+                  <ArrowRightIcon />
+                </Link>
               ))}
             </div>
           </div>

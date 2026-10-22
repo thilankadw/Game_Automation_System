@@ -9,12 +9,19 @@ from app.db import get_db
 from app.schemas import (
     ScreenshotCaptureSessionCreate,
     ScreenshotCaptureSessionRead,
+    StoredScreenshotSessionRead,
 )
-from app.services.screenshot_capture import manager
+from app.services.screenshot_capture import (
+    delete_all_stored_sessions,
+    delete_stored_session,
+    list_stored_sessions,
+    manager,
+)
 
 router = APIRouter(
     prefix="/screenshot-capture/sessions", tags=["screenshot-capture"]
 )
+game_router = APIRouter(prefix="/games", tags=["screenshot-capture"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -88,3 +95,68 @@ async def stop_screenshot_capture_session(session_id: str) -> None:
     """
     manager.get_session(session_id)
     await manager.stop_session(session_id)
+
+
+@game_router.get(
+    "/{game_id}/screenshots",
+    response_model=list[StoredScreenshotSessionRead],
+)
+async def list_game_screenshots(
+    game_id: int, db: DbSession
+) -> list[StoredScreenshotSessionRead]:
+    """List screenshots stored on disk for a game, newest session first.
+
+    Args:
+        game_id: Primary key of the game.
+        db: Active database session.
+
+    Returns:
+        Stored capture sessions with their screenshot URLs.
+
+    Raises:
+        HTTPException: If the game or its provider does not exist.
+    """
+    sessions = await list_stored_sessions(db, game_id)
+    return [
+        StoredScreenshotSessionRead.model_validate(session)
+        for session in sessions
+    ]
+
+
+@game_router.delete(
+    "/{game_id}/screenshots/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_game_screenshot_session(
+    game_id: int, session_id: str, db: DbSession
+) -> None:
+    """Delete one stored screenshot session for a game.
+
+    Args:
+        game_id: Primary key of the game.
+        session_id: Stored session folder to remove.
+        db: Active database session.
+
+    Raises:
+        HTTPException: If the game, provider, or session is missing, the
+            session is still capturing, or deletion fails.
+    """
+    await delete_stored_session(db, game_id, session_id)
+
+
+@game_router.delete(
+    "/{game_id}/screenshots",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_all_game_screenshots(game_id: int, db: DbSession) -> None:
+    """Delete every stored screenshot session for a game.
+
+    Args:
+        game_id: Primary key of the game.
+        db: Active database session.
+
+    Raises:
+        HTTPException: If the game or provider is missing, a capture is still
+            running for the game, or deletion fails.
+    """
+    await delete_all_stored_sessions(db, game_id)

@@ -2,14 +2,17 @@
 
 A capture session opens the game in a headed Chrome window, clicks the spin
 button ROI, waits for the game's configured spin delay, and saves one
-full-window black-and-white screenshot per spin. The click/wait/capture cycle
-repeats for the game's configured number of spins.
+full-viewport black-and-white screenshot per spin. The click/wait/capture cycle
+repeats for the game's configured number of spins. Persisted runs can be listed
+and deleted per session or for a whole game so the UI can manage stored
+screenshot libraries.
 """
 
 from __future__ import annotations
 
 import asyncio
 import re
+import shutil
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -18,6 +21,7 @@ from typing import Literal
 from urllib.parse import quote
 
 from fastapi import HTTPException, status
+from PIL import Image
 from playwright.async_api import (
     Browser,
     BrowserContext,
@@ -30,7 +34,7 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import SCREENSHOT_DIR
-from app.models import Game, RoiSet
+from app.models import Game, GameProvider, RoiSet
 from app.services import game_providers as provider_service
 from app.services import games as game_service
 from app.services.browser import LAUNCH_ARGS, viewport_size
@@ -81,6 +85,18 @@ class ScreenshotCaptureSession:
         default_factory=asyncio.Event, repr=False
     )
     task: asyncio.Task[None] | None = field(default=None, repr=False)
+
+
+@dataclass(frozen=True)
+class StoredScreenshotSession:
+    """A completed capture folder stored on disk."""
+
+    id: str
+    created_at: datetime
+    screenshot_count: int
+    width: int
+    height: int
+    screenshots: list[str]
 
 
 class _CaptureCancelled(Exception):
@@ -151,6 +167,268 @@ def _safe_segment(name: str, fallback: str) -> str:
         segment = f"_{segment}"
     segment = segment[:_MAX_SEGMENT_LENGTH].rstrip(" .")
     return segment or fallback
+
+
+def _game_folder_parts(provider: GameProvider, game: Game) -> tuple[str, str]:
+    """Return the provider and game folder names for a capture.
+
+    Args:
+        provider: Provider that owns the game.
+        game: Game being captured.
+
+    Returns:
+        Filesystem-safe provider and game segments.
+    """
+    return (
+        _safe_segment(provider.name, f"provider_{provider.id}"),
+        _safe_segment(game.name, f"game_{game.id}"),
+    )
+
+
+def _read_image_size(path: Path) -> tuple[int, int]:
+    """Read a capture's pixel dimensions, falling back to the capture viewport."""
+    try:
+        with Image.open(path) as image:
+            return image.size
+    except OSError:
+        return viewport_size()
+
+
+def _scan_stored_sessions(
+    folder_parts: tuple[str, str],
+) -> list[StoredScreenshotSession]:
+    """Scan a game's capture folder for persisted screenshot sessions.
+
+    Args:
+        folder_parts: Provider and game folder segments.
+
+    Returns:
+        Stored sessions ordered newest first.
+    """
+    base_dir = SCREENSHOT_DIR.joinpath(*folder_parts)
+    if not base_dir.is_dir():
+        return []
+
+    sessions: list[StoredScreenshotSession] = []
+    for session_dir in base_dir.iterdir():
+        if not session_dir.is_dir():
+            continue
+
+        files = sorted(
+            path
+            for path in session_dir.glob("spin_*.png")
+            if path.is_file()
+        )
+        if not files:
+            continue
+
+        try:
+            created_at = datetime.fromtimestamp(
+                session_dir.stat().st_mtime, tz=UTC
+            )
+        except OSError:
+            continue
+
+        width, height = _read_image_size(files[-1])
+        screenshots = [
+            "/screenshots/"
+            + "/".join(
+                quote(part, safe="")
+                for part in (*folder_parts, session_dir.name, path.name)
+            )
+            for path in files
+        ]
+        sessions.append(
+            StoredScreenshotSession(
+                id=session_dir.name,
+                created_at=created_at,
+                screenshot_count=len(screenshots),
+                width=width,
+                height=height,
+                screenshots=screenshots,
+            )
+        )
+
+    sessions.sort(key=lambda item: item.created_at, reverse=True)
+    return sessions
+
+
+async def _load_game_folder_parts(
+    db: AsyncSession, game_id: int
+) -> tuple[str, str]:
+    """Return the provider and game folder segments for a stored game.
+
+    Args:
+        db: Active database session used to load the game and provider.
+        game_id: Primary key of the game.
+
+    Returns:
+        Filesystem-safe provider and game segments.
+
+    Raises:
+        HTTPException: If the game or its provider does not exist.
+    """
+    game = await game_service.get_game(db, game_id)
+    provider = await provider_service.get_game_provider(
+        db, game.game_provider_id
+    )
+    return _game_folder_parts(provider, game)
+
+
+async def list_stored_sessions(
+    db: AsyncSession, game_id: int
+) -> list[StoredScreenshotSession]:
+    """Return screenshots persisted for a game across capture sessions.
+
+    Args:
+        db: Active database session used to load the game and provider.
+        game_id: Primary key of the game.
+
+    Returns:
+        Stored sessions ordered newest first.
+
+    Raises:
+        HTTPException: If the game or its provider does not exist.
+    """
+    folder_parts = await _load_game_folder_parts(db, game_id)
+    return await asyncio.to_thread(_scan_stored_sessions, folder_parts)
+
+
+def _valid_session_name(session_id: str) -> bool:
+    """Return whether a session folder name is safe to use as one segment."""
+    return (
+        bool(session_id)
+        and session_id not in {".", ".."}
+        and session_id == session_id.strip()
+        and not session_id.endswith(".")
+        and _INVALID_SEGMENT_CHARS.search(session_id) is None
+    )
+
+
+def _delete_session_folder(
+    folder_parts: tuple[str, str], session_id: str
+) -> None:
+    """Delete one stored session folder inside a game's screenshot folder.
+
+    Args:
+        folder_parts: Provider and game folder segments.
+        session_id: Name of the session folder to remove.
+
+    Raises:
+        HTTPException: If the folder is missing or cannot be removed.
+    """
+    if not _valid_session_name(session_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Screenshot session not found",
+        )
+
+    base_dir = SCREENSHOT_DIR.joinpath(*folder_parts)
+    if not base_dir.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Screenshot session not found",
+        )
+
+    session_dir = base_dir / session_id
+    try:
+        resolved_base = base_dir.resolve()
+        resolved_session = session_dir.resolve()
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Screenshot session not found",
+        ) from exc
+
+    # Resolving both paths prevents a symlink or unexpected segment from
+    # deleting anything outside this game's screenshot folder.
+    if (
+        resolved_session.parent != resolved_base
+        or not resolved_session.is_dir()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Screenshot session not found",
+        )
+
+    try:
+        shutil.rmtree(resolved_session)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete the screenshot session.",
+        ) from exc
+
+
+def _delete_all_session_folders(folder_parts: tuple[str, str]) -> None:
+    """Delete a game's screenshot folder and every session inside it.
+
+    Args:
+        folder_parts: Provider and game folder segments.
+
+    Raises:
+        HTTPException: If the folder exists but cannot be removed.
+    """
+    base_dir = SCREENSHOT_DIR.joinpath(*folder_parts)
+    if not base_dir.is_dir():
+        return
+
+    try:
+        shutil.rmtree(base_dir)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete the game's screenshots.",
+        ) from exc
+
+
+async def delete_stored_session(
+    db: AsyncSession, game_id: int, session_id: str
+) -> None:
+    """Delete all screenshots in one stored session for a game.
+
+    Args:
+        db: Active database session used to load the game and provider.
+        game_id: Primary key of the game.
+        session_id: Name of the stored session folder.
+
+    Raises:
+        HTTPException: If the game, provider, or session is missing, the
+            session is still capturing, or its folder cannot be removed.
+    """
+    folder_parts = await _load_game_folder_parts(db, game_id)
+    if session_id in manager.active_session_ids():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Stop the running capture before deleting its screenshots."
+            ),
+        )
+
+    await asyncio.to_thread(
+        _delete_session_folder, folder_parts, session_id
+    )
+
+
+async def delete_all_stored_sessions(db: AsyncSession, game_id: int) -> None:
+    """Delete every stored screenshot session for a game.
+
+    Args:
+        db: Active database session used to load the game and provider.
+        game_id: Primary key of the game.
+
+    Raises:
+        HTTPException: If the game or provider is missing, a capture is still
+            running for the game, or the folder cannot be removed.
+    """
+    folder_parts = await _load_game_folder_parts(db, game_id)
+    if game_id in manager.active_game_ids():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Stop the running capture before deleting screenshots.",
+        )
+
+    await asyncio.to_thread(_delete_all_session_folders, folder_parts)
 
 
 class ScreenshotCaptureManager:
@@ -238,11 +516,7 @@ class ScreenshotCaptureManager:
                 )
 
         session_id = uuid.uuid4().hex
-        folder_parts = (
-            _safe_segment(provider.name, f"provider_{provider.id}"),
-            _safe_segment(game.name, f"game_{game.id}"),
-            session_id,
-        )
+        folder_parts = (*_game_folder_parts(provider, game), session_id)
         output_dir = SCREENSHOT_DIR.joinpath(*folder_parts)
         output_path = "/screenshots/" + "/".join(
             quote(part, safe="") for part in folder_parts
@@ -424,6 +698,22 @@ class ScreenshotCaptureManager:
         """Return every session ordered by creation time."""
         self._prune()
         return sorted(self._sessions.values(), key=lambda item: item.created_at)
+
+    def active_session_ids(self) -> set[str]:
+        """Return IDs of sessions that are still starting or running."""
+        return {
+            session.id
+            for session in self._sessions.values()
+            if session.status in {"starting", "running"}
+        }
+
+    def active_game_ids(self) -> set[int]:
+        """Return game IDs that currently have an active capture."""
+        return {
+            session.game_id
+            for session in self._sessions.values()
+            if session.status in {"starting", "running"}
+        }
 
     async def stop_session(self, session_id: str) -> None:
         """Cancel a running session and wait for its browser context to close."""

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { Modal } from "@/components/modal";
@@ -55,6 +56,7 @@ export function ScreenshotCaptureButton({
   apiBaseUrl,
   triggerClassName = "button button-sm",
 }: ScreenshotCaptureButtonProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<ScreenshotCaptureSession | null>(
     null,
@@ -90,6 +92,18 @@ export function ScreenshotCaptureButton({
       window.clearInterval(interval);
     };
   }, [open, session]);
+
+  useEffect(() => {
+    if (
+      session?.status === "completed" ||
+      session?.status === "failed" ||
+      session?.status === "cancelled"
+    ) {
+      // Refresh the page behind the dialog so stored screenshot galleries and
+      // session tables reflect the completed run.
+      router.refresh();
+    }
+  }, [router, session]);
 
   const start = () => {
     setError(null);

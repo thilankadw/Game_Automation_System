@@ -4,8 +4,8 @@ import { DeleteButton } from "@/components/delete-button";
 import { EmptyState } from "@/components/empty-state";
 import { GameFormButton } from "@/components/game-form-button";
 import {
+  ArrowRightIcon,
   DatabaseIcon,
-  ExternalLinkIcon,
   SearchIcon,
 } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
@@ -170,15 +170,13 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
                   {gamesPage.items.map((game) => (
                     <tr key={game.id}>
                       <td>
-                        <a
+                        <Link
                           className="game-link"
-                          href={game.url}
-                          rel="noreferrer"
-                          target="_blank"
+                          href={`/games/${game.id}`}
                         >
                           {game.name}
-                          <ExternalLinkIcon />
-                        </a>
+                          <ArrowRightIcon />
+                        </Link>
                         <span className="table-secondary">
                           {formatUrlHost(game.url)}
                         </span>

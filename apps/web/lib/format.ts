@@ -3,12 +3,24 @@
  */
 
 const numberFormatter = new Intl.NumberFormat("en-US");
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
 /**
  * Format an integer with thousands separators.
  */
 export function formatNumber(value: number): string {
   return numberFormatter.format(value);
+}
+
+/**
+ * Format an ISO timestamp as a short, consistent US date and time.
+ */
+export function formatDateTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : dateTimeFormatter.format(date);
 }
 
 /**

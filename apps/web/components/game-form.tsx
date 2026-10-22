@@ -198,7 +198,7 @@ export function GameForm({ providers, game, onClose }: GameFormProps) {
               .
             </>
           ) : (
-            "Use the layout that marks the spin button, balance, bet, and win."
+            "The spin button is required; other regions are optional."
           )}
         </p>
       </div>

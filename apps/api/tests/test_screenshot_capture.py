@@ -1,7 +1,14 @@
 """Tests for the automated screenshot capture session endpoints."""
 
-from fastapi.testclient import TestClient
+import os
+from pathlib import Path
+from urllib.parse import quote
 
+import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
+
+from app.services import screenshot_capture
 from app.services.screenshot_capture import _safe_segment
 
 URL = "/screenshot-capture/sessions"
@@ -102,6 +109,225 @@ def test_list_sessions_is_empty_without_a_run(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_stored_screenshots_require_a_known_game(client: TestClient) -> None:
+    """Listing stored screenshots for a missing game returns 404."""
+    response = client.get("/games/9999/screenshots")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Game not found"
+
+
+def test_stored_screenshots_are_empty_without_a_folder(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A game with no capture folder has no stored screenshots."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Screenshot Provider")
+    game = _create_game(client, provider_id, name="Screenshot Game")
+
+    response = client.get(f"/games/{game['id']}/screenshots")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_stored_screenshots_list_sessions_newest_first(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stored folders expose image URLs, counts, and capture dimensions."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Screenshot Provider")
+    game = _create_game(client, provider_id, name="Screenshot Game")
+
+    game_folder = tmp_path / "Screenshot Provider" / "Screenshot Game"
+    older = game_folder / "older-session"
+    newer = game_folder / "newer-session"
+    for folder in (older, newer):
+        folder.mkdir(parents=True)
+        for index in (1, 2):
+            image = Image.new("1", (1152, 648), color=1)
+            image.save(folder / f"spin_{index:04d}.png")
+
+    os.utime(older, (1_700_000_000, 1_700_000_000))
+    os.utime(newer, (1_800_000_000, 1_800_000_000))
+
+    response = client.get(f"/games/{game['id']}/screenshots")
+
+    assert response.status_code == 200
+    sessions = response.json()
+    assert [session["id"] for session in sessions] == [
+        "newer-session",
+        "older-session",
+    ]
+    assert sessions[0]["screenshot_count"] == 2
+    assert sessions[0]["width"] == 1152
+    assert sessions[0]["height"] == 648
+    prefix = (
+        "/screenshots/Screenshot%20Provider/Screenshot%20Game/newer-session"
+    )
+    assert sessions[0]["screenshots"] == [
+        f"{prefix}/spin_0001.png",
+        f"{prefix}/spin_0002.png",
+    ]
+
+
+def _write_session(folder: Path, count: int = 2) -> Path:
+    """Create a stored session folder with black-and-white PNG frames."""
+    folder.mkdir(parents=True, exist_ok=True)
+    image = Image.new("1", (1152, 648), color=1)
+    for index in range(1, count + 1):
+        image.save(folder / f"spin_{index:04d}.png")
+    return folder
+
+
+def test_delete_stored_session_removes_only_that_session(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deleting one session keeps the game's other captures on disk."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+    base = tmp_path / "Delete Provider" / "Delete Game"
+    removed = _write_session(base / "session-to-remove")
+    kept = _write_session(base / "session-to-keep", count=3)
+
+    response = client.delete(
+        f"/games/{game['id']}/screenshots/session-to-remove"
+    )
+
+    assert response.status_code == 204
+    assert not removed.exists()
+    assert (kept / "spin_0003.png").is_file()
+    sessions = client.get(f"/games/{game['id']}/screenshots").json()
+    assert [session["id"] for session in sessions] == ["session-to-keep"]
+
+
+def test_delete_all_stored_sessions_removes_the_game_folder(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deleting all screenshots removes every session for the game."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+    base = tmp_path / "Delete Provider" / "Delete Game"
+    _write_session(base / "session-one")
+    _write_session(base / "session-two")
+
+    response = client.delete(f"/games/{game['id']}/screenshots")
+
+    assert response.status_code == 204
+    assert not base.exists()
+    assert client.get(f"/games/{game['id']}/screenshots").json() == []
+
+
+def test_delete_screenshots_handle_missing_folders(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing session is a 404, while deleting all is a no-op."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+
+    missing = client.delete(
+        f"/games/{game['id']}/screenshots/missing-session"
+    )
+    delete_all = client.delete(f"/games/{game['id']}/screenshots")
+
+    assert missing.status_code == 404
+    assert delete_all.status_code == 204
+
+
+def test_delete_screenshots_requires_a_known_game(
+    client: TestClient,
+) -> None:
+    """Deleting stored screenshots for a missing game returns 404."""
+    assert client.delete("/games/9999/screenshots").status_code == 404
+    assert (
+        client.delete("/games/9999/screenshots/session").status_code == 404
+    )
+
+
+def test_delete_session_rejects_invalid_folder_names(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Session names containing path syntax cannot remove other folders."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+    base = tmp_path / "Delete Provider" / "Delete Game"
+    _write_session(base / "safe-session")
+    outside = tmp_path / "outside"
+    _write_session(outside)
+
+    response = client.delete(
+        f"/games/{game['id']}/screenshots/{quote(str(outside), safe='')}"
+    )
+
+    assert response.status_code == 404
+    assert (outside / "spin_0001.png").is_file()
+    assert (base / "safe-session" / "spin_0001.png").is_file()
+
+
+def test_delete_session_rejects_an_active_capture(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A session cannot be deleted while its capture is still running."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+    base = tmp_path / "Delete Provider" / "Delete Game"
+    session = _write_session(base / "active-session")
+    monkeypatch.setattr(
+        screenshot_capture.manager,
+        "active_session_ids",
+        lambda: {"active-session"},
+    )
+
+    response = client.delete(
+        f"/games/{game['id']}/screenshots/active-session"
+    )
+
+    assert response.status_code == 409
+    assert session.is_dir()
+
+
+def test_delete_all_rejects_an_active_capture(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bulk deletion is blocked while any capture is running for the game."""
+    monkeypatch.setattr(screenshot_capture, "SCREENSHOT_DIR", tmp_path)
+    provider_id = _create_provider(client, "Delete Provider")
+    game = _create_game(client, provider_id, name="Delete Game")
+    base = tmp_path / "Delete Provider" / "Delete Game"
+    _write_session(base / "active-session")
+    monkeypatch.setattr(
+        screenshot_capture.manager,
+        "active_game_ids",
+        lambda: {game["id"]},
+    )
+
+    response = client.delete(f"/games/{game['id']}/screenshots")
+
+    assert response.status_code == 409
+    assert base.is_dir()
 
 
 def test_safe_segment_preserves_readable_names() -> None:

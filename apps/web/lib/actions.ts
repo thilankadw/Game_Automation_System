@@ -16,9 +16,11 @@ import {
   createGame,
   createProvider,
   createRoiSet,
+  deleteAllStoredScreenshots,
   deleteGame,
   deleteProvider,
   deleteRoiSet,
+  deleteStoredScreenshotSession,
   getProvidersPage,
   getRoiSets,
   getScreenshotCaptureSession,
@@ -54,7 +56,7 @@ function errorMessage(error: unknown): string {
 /** Refresh every page that renders provider or game catalog data. */
 function revalidateCatalog(): void {
   revalidatePath("/");
-  revalidatePath("/games");
+  revalidatePath("/games", "layout");
   revalidatePath("/providers", "layout");
 }
 
@@ -370,6 +372,45 @@ export async function stopScreenshotCaptureAction(
 ): Promise<ActionResult> {
   try {
     await stopScreenshotCapture(sessionId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Delete one stored screenshot session for a game. */
+export async function deleteScreenshotSessionAction(
+  gameId: number,
+  sessionId: string,
+): Promise<ActionResult> {
+  const normalizedSessionId = sessionId.trim();
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    return { ok: false, error: "Select a valid game." };
+  }
+  if (!normalizedSessionId) {
+    return { ok: false, error: "Select a screenshot session." };
+  }
+
+  try {
+    await deleteStoredScreenshotSession(gameId, normalizedSessionId);
+    revalidatePath(`/games/${gameId}`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Delete every stored screenshot session for a game. */
+export async function deleteAllScreenshotsAction(
+  gameId: number,
+): Promise<ActionResult> {
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    return { ok: false, error: "Select a valid game." };
+  }
+
+  try {
+    await deleteAllStoredScreenshots(gameId);
+    revalidatePath(`/games/${gameId}`);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

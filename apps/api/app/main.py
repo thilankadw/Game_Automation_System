@@ -54,6 +54,7 @@ app.include_router(games.router)
 app.include_router(roi_sets.router)
 app.include_router(roi_capture.router)
 app.include_router(screenshot_capture.router)
+app.include_router(screenshot_capture.game_router)
 app.mount(
     "/screenshots",
     StaticFiles(directory=SCREENSHOT_DIR),

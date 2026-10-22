@@ -40,3 +40,16 @@ class ScreenshotCaptureSessionRead(BaseModel):
     latest_screenshot: str | None
     created_at: datetime
     finished_at: datetime | None
+
+
+class StoredScreenshotSessionRead(BaseModel):
+    """A capture folder persisted on disk with its screenshot URLs."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    screenshot_count: int
+    width: int
+    height: int
+    screenshots: list[str]
