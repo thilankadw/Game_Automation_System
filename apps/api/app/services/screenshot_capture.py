@@ -14,7 +14,7 @@ import asyncio
 import re
 import shutil
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -31,10 +31,11 @@ from playwright.async_api import (
 )
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import SCREENSHOT_DIR
-from app.models import Game, GameProvider, RoiSet
+from app.models import Game, GameProvider, RoiSet, SpinReading
 from app.services import game_providers as provider_service
 from app.services import games as game_service
 from app.services.browser import LAUNCH_ARGS, viewport_size
@@ -97,6 +98,7 @@ class StoredScreenshotSession:
     width: int
     height: int
     screenshots: list[str]
+    ocr_reading_count: int = 0
 
 
 class _CaptureCancelled(Exception):
@@ -285,13 +287,31 @@ async def list_stored_sessions(
         game_id: Primary key of the game.
 
     Returns:
-        Stored sessions ordered newest first.
+        Stored sessions ordered newest first, each with its OCR reading count.
 
     Raises:
         HTTPException: If the game or its provider does not exist.
     """
     folder_parts = await _load_game_folder_parts(db, game_id)
-    return await asyncio.to_thread(_scan_stored_sessions, folder_parts)
+    sessions = await asyncio.to_thread(_scan_stored_sessions, folder_parts)
+    counts = dict(
+        (
+            await db.execute(
+                select(
+                    SpinReading.session_id, func.count(SpinReading.id)
+                )
+                .where(SpinReading.game_id == game_id)
+                .group_by(SpinReading.session_id)
+            )
+        ).all()
+    )
+    return [
+        replace(
+            session,
+            ocr_reading_count=counts.get(session.id, 0),
+        )
+        for session in sessions
+    ]
 
 
 def _valid_session_name(session_id: str) -> bool:

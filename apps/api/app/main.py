@@ -17,10 +17,12 @@ from app.db import engine, get_db
 from app.routers import (
     game_providers,
     games,
+    ocr,
     roi_capture,
     roi_sets,
     screenshot_capture,
 )
+from app.services.ocr_extraction import manager as ocr_manager
 from app.services.roi_capture import manager as roi_capture_manager
 from app.services.screenshot_capture import manager as screenshot_manager
 
@@ -42,6 +44,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
     await roi_capture_manager.shutdown()
     await screenshot_manager.shutdown()
+    await ocr_manager.shutdown()
     await engine.dispose()
 
 
@@ -55,6 +58,7 @@ app.include_router(roi_sets.router)
 app.include_router(roi_capture.router)
 app.include_router(screenshot_capture.router)
 app.include_router(screenshot_capture.game_router)
+app.include_router(ocr.router)
 app.mount(
     "/screenshots",
     StaticFiles(directory=SCREENSHOT_DIR),

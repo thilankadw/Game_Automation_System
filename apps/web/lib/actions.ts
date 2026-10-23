@@ -7,6 +7,7 @@ import {
   type GameInput,
   type GameProvider,
   type GameProviderInput,
+  type OcrRun,
   type RoiInput,
   type RoiName,
   type RoiSet,
@@ -16,16 +17,21 @@ import {
   createGame,
   createProvider,
   createRoiSet,
+  deleteAllOcrReadings,
   deleteAllStoredScreenshots,
   deleteGame,
+  deleteOcrSessionReadings,
   deleteProvider,
   deleteRoiSet,
   deleteStoredScreenshotSession,
+  getOcrRun,
   getProvidersPage,
   getRoiSets,
   getScreenshotCaptureSession,
+  startOcrRun,
   startRoiCapture,
   startScreenshotCapture,
+  stopOcrRun,
   stopScreenshotCapture,
   updateGame,
   updateProvider,
@@ -35,6 +41,11 @@ import {
 /** Result of a screenshot capture action that returns session state. */
 export type ScreenshotSessionResult =
   | { ok: true; session: ScreenshotCaptureSession }
+  | { ok: false; error: string };
+
+/** Result of an OCR action that returns run state. */
+export type OcrRunResult =
+  | { ok: true; run: OcrRun }
   | { ok: false; error: string };
 
 /** Result of loading a provider's ROI sets for the game form. */
@@ -372,6 +383,92 @@ export async function stopScreenshotCaptureAction(
 ): Promise<ActionResult> {
   try {
     await stopScreenshotCapture(sessionId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Start reading balance, bet, and win from a stored screenshot session. */
+export async function startOcrRunAction(
+  gameId: number,
+  sessionId: string,
+): Promise<OcrRunResult> {
+  const normalizedSessionId = sessionId.trim();
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    return { ok: false, error: "Select a valid game." };
+  }
+  if (!normalizedSessionId) {
+    return { ok: false, error: "Select a screenshot session." };
+  }
+
+  try {
+    const run = await startOcrRun(gameId, normalizedSessionId);
+    return { ok: true, run };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Poll an OCR run for its latest progress. */
+export async function getOcrRunAction(
+  gameId: number,
+  runId: string,
+): Promise<OcrRunResult> {
+  try {
+    const run = await getOcrRun(gameId, runId);
+    return { ok: true, run };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Stop a running OCR extraction. */
+export async function stopOcrRunAction(
+  gameId: number,
+  runId: string,
+): Promise<ActionResult> {
+  try {
+    await stopOcrRun(gameId, runId);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Delete every OCR reading extracted from one stored session. */
+export async function deleteOcrSessionReadingsAction(
+  gameId: number,
+  sessionId: string,
+): Promise<ActionResult> {
+  const normalizedSessionId = sessionId.trim();
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    return { ok: false, error: "Select a valid game." };
+  }
+  if (!normalizedSessionId) {
+    return { ok: false, error: "Select a screenshot session." };
+  }
+
+  try {
+    await deleteOcrSessionReadings(gameId, normalizedSessionId);
+    revalidatePath(`/games/${gameId}`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+/** Delete every OCR reading stored for a game. */
+export async function deleteAllOcrReadingsAction(
+  gameId: number,
+): Promise<ActionResult> {
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    return { ok: false, error: "Select a valid game." };
+  }
+
+  try {
+    await deleteAllOcrReadings(gameId);
+    revalidatePath(`/games/${gameId}`);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

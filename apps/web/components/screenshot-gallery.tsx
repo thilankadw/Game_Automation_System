@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { OcrReadingsDeleteButton } from "@/components/ocr-readings-delete-button";
+import { OcrRunButton } from "@/components/ocr-run-button";
 import { ScreenshotDeleteButton } from "@/components/screenshot-delete-button";
 import type { StoredScreenshotSession } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -38,12 +40,19 @@ export function ScreenshotGallery({
         <p className="screenshot-library-note">
           Frames are stored on this machine.
         </p>
-        <ScreenshotDeleteButton
-          frameCount={totalFrames}
-          gameId={gameId}
-          gameName={gameName}
-          sessionCount={sessions.length}
-        />
+        <div className="screenshot-library-actions">
+          <OcrRunButton
+            gameId={gameId}
+            gameName={gameName}
+            sessions={sessions}
+          />
+          <ScreenshotDeleteButton
+            frameCount={totalFrames}
+            gameId={gameId}
+            gameName={gameName}
+            sessionCount={sessions.length}
+          />
+        </div>
       </div>
       {sessions.map((session, index) => (
         <details
@@ -136,6 +145,15 @@ function SessionFrames({
               ? "Show fewer frames"
               : `Show all ${formatNumber(session.screenshots.length)} frames`}
           </button>
+        ) : null}
+        {session.ocr_reading_count > 0 ? (
+          <OcrReadingsDeleteButton
+            gameId={gameId}
+            gameName={gameName}
+            readingCount={session.ocr_reading_count}
+            sessionId={session.id}
+            triggerClassName="button button-ghost button-sm"
+          />
         ) : null}
         <ScreenshotDeleteButton
           frameCount={session.screenshot_count}

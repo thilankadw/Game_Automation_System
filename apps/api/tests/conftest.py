@@ -43,6 +43,7 @@ def clear_tables(client: TestClient) -> Iterator[None]:
     """Remove ROI, game, and provider rows after each test."""
     yield
     with closing(sqlite3.connect(_DB_PATH)) as connection:
+        connection.execute("DELETE FROM spin_readings")
         connection.execute("DELETE FROM rois")
         connection.execute("DELETE FROM roi_sets")
         connection.execute("DELETE FROM games")

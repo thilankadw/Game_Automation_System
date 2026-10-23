@@ -3,6 +3,10 @@
  */
 
 const numberFormatter = new Intl.NumberFormat("en-US");
+const amountFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -13,6 +17,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
  */
 export function formatNumber(value: number): string {
   return numberFormatter.format(value);
+}
+
+/**
+ * Format an OCR amount with two decimals, or a dash when it was not read.
+ */
+export function formatAmount(value: number | null): string {
+  return value === null ? "-" : amountFormatter.format(value);
 }
 
 /**
