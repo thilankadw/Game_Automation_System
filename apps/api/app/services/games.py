@@ -1,11 +1,11 @@
 """Business logic for games."""
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Load, selectinload
 
-from app.models import Game, GameProvider, RoiSet
+from app.models import Game, GameProvider, RoiSet, SpinReading
 from app.schemas import GameCreate, GameUpdate, RoiSetCreate
 from app.services import roi_sets as roi_set_service
 
@@ -253,5 +253,6 @@ async def delete_game(db: AsyncSession, game_id: int) -> None:
         HTTPException: If the game does not exist.
     """
     game = await get_game(db, game_id)
+    await db.execute(delete(SpinReading).where(SpinReading.game_id == game_id))
     await db.delete(game)
     await db.commit()

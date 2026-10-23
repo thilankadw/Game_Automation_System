@@ -8,6 +8,12 @@ from app.schemas.game_provider import (
     GameProviderRead,
     GameProviderUpdate,
 )
+from app.schemas.ocr import (
+    OcrRunCreate,
+    OcrRunRead,
+    OcrSpinReadingPage,
+    OcrSpinReadingRead,
+)
 from app.schemas.roi import (
     RoiBase,
     RoiCreate,
@@ -37,6 +43,10 @@ __all__ = [
     "GameProviderUpdate",
     "GameRead",
     "GameUpdate",
+    "OcrRunCreate",
+    "OcrRunRead",
+    "OcrSpinReadingPage",
+    "OcrSpinReadingRead",
     "RoiBase",
     "RoiCaptureSessionCreate",
     "RoiCaptureSessionRead",

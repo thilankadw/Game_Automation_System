@@ -53,3 +53,4 @@ class StoredScreenshotSessionRead(BaseModel):
     width: int
     height: int
     screenshots: list[str]
+    ocr_reading_count: int = 0

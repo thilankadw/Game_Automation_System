@@ -131,6 +131,56 @@ export interface StoredScreenshotSession {
   width: number;
   height: number;
   screenshots: string[];
+  ocr_reading_count: number;
+}
+
+/** Lifecycle of an OCR extraction run. */
+export type OcrRunStatus =
+  | "starting"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+/** Progress details for reading balance, bet, and win from screenshots. */
+export interface OcrRun {
+  id: string;
+  game_id: number;
+  game_name: string;
+  session_id: string;
+  roi_set_id: number;
+  roi_set_name: string;
+  total_spins: number;
+  processed_spins: number;
+  recognized_spins: number;
+  status: OcrRunStatus;
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+/** Values extracted from one stored screenshot frame. */
+export interface OcrSpinReading {
+  id: number;
+  game_id: number;
+  session_id: string;
+  spin_number: number;
+  balance: number | null;
+  bet: number | null;
+  win: number | null;
+  balance_text: string | null;
+  bet_text: string | null;
+  win_text: string | null;
+  screenshot_path: string;
+  created_at: string;
+}
+
+/** A page of stored OCR readings. */
+export interface OcrSpinReadingPage {
+  items: OcrSpinReading[];
+  total: number;
+  skip: number;
+  limit: number;
 }
 
 export interface HealthStatus {
@@ -428,9 +478,83 @@ export function stopScreenshotCapture(sessionId: string): Promise<void> {
 }
 
 /**
- * Create a game.
+ * Start reading balance, bet, and win from a stored screenshot session.
  */
-export function createGame(input: GameInput): Promise<Game> {
+export function startOcrRun(
+  gameId: number,
+  sessionId: string,
+): Promise<OcrRun> {
+  return request<OcrRun>(`/games/${gameId}/ocr-runs`, {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+}
+
+/**
+ * Fetch one OCR run with its latest progress.
+ */
+export function getOcrRun(gameId: number, runId: string): Promise<OcrRun> {
+  return request<OcrRun>(
+    `/games/${gameId}/ocr-runs/${encodeURIComponent(runId)}`,
+  );
+}
+
+/**
+ * Stop an OCR run. Readings already stored are kept.
+ */
+export function stopOcrRun(gameId: number, runId: string): Promise<void> {
+  return request<void>(
+    `/games/${gameId}/ocr-runs/${encodeURIComponent(runId)}`,
+    { method: "DELETE" },
+  );
+}
+
+/**
+ * Fetch stored OCR readings for a game, newest spin first.
+ */
+export function getOcrReadings(
+  gameId: number,
+  params: {
+    sessionId?: string;
+    skip?: number;
+    limit?: number;
+  } = {},
+): Promise<OcrSpinReadingPage> {
+  return request<OcrSpinReadingPage>(
+    `/games/${gameId}/ocr-readings${buildQuery({
+      session_id: params.sessionId,
+      skip: params.skip,
+      limit: params.limit,
+    })}`,
+  );
+}
+
+  /**
+   * Delete every OCR reading for one stored screenshot session.
+   */
+  export function deleteOcrSessionReadings(
+    gameId: number,
+    sessionId: string,
+  ): Promise<void> {
+    return request<void>(
+      `/games/${gameId}/ocr-readings/${encodeURIComponent(sessionId)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * Delete every OCR reading stored for a game.
+   */
+  export function deleteAllOcrReadings(gameId: number): Promise<void> {
+    return request<void>(`/games/${gameId}/ocr-readings`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Create a game.
+   */
+  export function createGame(input: GameInput): Promise<Game> {
   return request<Game>("/games", {
     method: "POST",
     body: JSON.stringify(input),

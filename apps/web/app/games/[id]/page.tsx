@@ -12,6 +12,7 @@ import {
   ExternalLinkIcon,
   ProvidersIcon,
 } from "@/components/icons";
+import { OcrReadings } from "@/components/ocr-readings";
 import { PageHeader } from "@/components/page-header";
 import { RoiCaptureButton } from "@/components/roi-capture-button";
 import { RoiSetFormButton } from "@/components/roi-set-form-button";
@@ -22,11 +23,13 @@ import {
   ApiError,
   type Game,
   type GameProvider,
+  type OcrSpinReadingPage,
   type Roi,
   type ScreenshotCaptureSession,
   type StoredScreenshotSession,
   getAllProviders,
   getGame,
+  getOcrReadings,
   getScreenshotCaptureSessions,
   getStoredScreenshots,
 } from "@/lib/api";
@@ -153,11 +156,12 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
     );
   }
 
-  const [providersResult, sessionsResult, storedResult] =
+  const [providersResult, sessionsResult, storedResult, ocrResult] =
     await Promise.allSettled([
       getAllProviders(),
       getScreenshotCaptureSessions(),
       getStoredScreenshots(game.id),
+      getOcrReadings(game.id, { limit: 50 }),
     ]);
 
   const providers: GameProvider[] | null =
@@ -172,6 +176,8 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
       : null;
   const storedSessions: StoredScreenshotSession[] | null =
     storedResult.status === "fulfilled" ? storedResult.value : null;
+  const ocrPage: OcrSpinReadingPage | null =
+    ocrResult.status === "fulfilled" ? ocrResult.value : null;
   const totalCaptures =
     storedSessions?.reduce(
       (total, session) => total + session.screenshot_count,
@@ -448,6 +454,15 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
               />
             )}
           </section>
+
+          <OcrReadings
+            apiBaseUrl={API_URL}
+            gameId={game.id}
+            gameName={game.name}
+            readings={ocrPage?.items ?? []}
+            total={ocrPage?.total ?? 0}
+            unavailable={ocrPage === null}
+          />
         </div>
 
         <aside className="game-detail-side">

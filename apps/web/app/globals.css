@@ -560,6 +560,13 @@ button {
   min-width: 0;
 }
 
+.card-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .card-title {
   margin: 0;
   color: var(--text);
@@ -2179,6 +2186,13 @@ button {
   font-size: 9px;
 }
 
+.screenshot-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .screenshot-session {
   border-bottom: 1px solid var(--border);
 }
@@ -2312,6 +2326,29 @@ button {
   border-color: rgba(248, 113, 113, 0.35);
   background: var(--danger-soft);
   color: #fca5a5;
+}
+
+.ocr-session {
+  color: var(--text-muted);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ocr-frame-link {
+  color: var(--accent);
+  font-size: 10px;
+  text-decoration: underline;
+}
+
+.ocr-readings-footer {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.ocr-readings-footer p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9px;
 }
 
 @media (max-width: 1180px) {
@@ -2522,6 +2559,19 @@ button {
   }
 
   .screenshot-library-toolbar {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .screenshot-library-actions {
+    width: 100%;
+  }
+
+  .screenshot-library-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .ocr-readings-footer {
     padding-right: 14px;
     padding-left: 14px;
   }
